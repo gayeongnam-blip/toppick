@@ -1,36 +1,64 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 
 const SUPA_URL = "https://yxezntdehelwqlifqyud.supabase.co";
-const SUPA_KEY = "sb_publishable_IwrgV2XcAsH6_TkHCbXWzg_Wx7ZRWkK";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZXpudGRlaGVsd3FsaWZxeXVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzOTA4NTksImV4cCI6MjA5NTk2Njg1OX0.la4l2WC66ti0fN1cK-_kfmfbJdFWWBTzV4hwVVJH2Ag";
 
 const db = {
   async get(table, params = "") {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}&order=id`, {
-      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" }
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`, {
+      headers: {
+        "apikey": SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "x-client-info": "toppick/1.0"
+      }
     });
+    if (!r.ok) throw new Error(await r.text());
     return r.json();
   },
   async insert(table, body) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
       method: "POST",
-      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
+      headers: {
+        "apikey": SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Prefer": "return=representation",
+        "x-client-info": "toppick/1.0"
+      },
       body: JSON.stringify(body)
     });
+    if (!r.ok) throw new Error(await r.text());
     const data = await r.json();
     return Array.isArray(data) ? data[0] : data;
   },
   async update(table, body, match) {
-    await fetch(`${SUPA_URL}/rest/v1/${table}?${match}`, {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${match}`, {
       method: "PATCH",
-      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+      headers: {
+        "apikey": SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "x-client-info": "toppick/1.0"
+      },
       body: JSON.stringify(body)
     });
+    if (!r.ok) throw new Error(await r.text());
   },
   async remove(table, match) {
-    await fetch(`${SUPA_URL}/rest/v1/${table}?${match}`, {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${match}`, {
       method: "DELETE",
-      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
+      headers: {
+        "apikey": SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Accept": "application/json",
+        "x-client-info": "toppick/1.0"
+      }
     });
+    if (!r.ok) throw new Error(await r.text());
   }
 };
 
@@ -81,16 +109,14 @@ function ImageUploadBox({ value, onChange, size = 64 }) {
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 600;
+        const MAX = 300;
         let w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-          else { w = Math.round(w * MAX / h); h = MAX; }
-        }
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        onChange(canvas.toDataURL("image/jpeg", 0.7));
+        onChange(canvas.toDataURL("image/jpeg", 0.5));
       };
       img.src = ev.target.result;
     };
@@ -115,11 +141,10 @@ function ImageUploadBox({ value, onChange, size = 64 }) {
 function ProductForm({ data, onChange, categories }) {
   const fields = [
     { key: "name", label: "상품명 *", type: "text", placeholder: "상품명 입력" },
-    { key: "brand", label: "브랜드명", type: "text", placeholder: "브랜드명" },
+    { key: "brand", label: "옵션", type: "text", placeholder: "옵션 (색상, 사이즈 등)" },
     { key: "location", label: "위치", type: "text", placeholder: "예: A-1, 선반 2칸" },
     { key: "price", label: "판매가 (₩) *", type: "number", placeholder: "가격" },
     { key: "stock", label: "재고 수량 *", type: "number", placeholder: "수량" },
-    { key: "unit", label: "단위", type: "text", placeholder: "개, 병, 박스..." },
   ];
   return (
     <>
@@ -198,6 +223,7 @@ export default function InventoryApp() {
     setTimeout(() => setToast(null), 2500);
   };
   const makeEmptyProduct = () => ({ name: "", brand: "", location: "", category: categories[0] || "기타", price: "", stock: "", unit: "개", image: null });
+  const [stockModal, setStockModal] = useState(null); // null | "부족" | "품절"
 
   const filtered = useMemo(() => products.filter(p => {
     const catOk = filterCat === "전체" || p.category === filterCat;
@@ -223,15 +249,58 @@ export default function InventoryApp() {
     showToast(logType + " 완료! (" + qty + selectedProduct.unit + ")");
   };
   const handleAddProduct = async () => {
-    if (!newProduct.name || !newProduct.price || newProduct.stock === "") return showToast("필수 항목을 입력해주세요", "error");
-    const saved = await db.insert("products", {
-      name: newProduct.name, brand: newProduct.brand, location: newProduct.location,
-      category: newProduct.category, price: parseInt(newProduct.price),
-      stock: parseInt(newProduct.stock) || 0, unit: newProduct.unit, image_url: newProduct.image
-    });
-    if (saved) setProducts(prev => [...prev, { ...saved, image: saved.image_url }]);
-    setModal(null); setNewProduct(null);
-    showToast("상품이 추가됐어요!");
+    const name = newProduct.name?.trim();
+    const price = newProduct.price;
+    const stock = newProduct.stock;
+    if (!name) return showToast("상품명을 입력해주세요", "error");
+    if (!price) return showToast("판매가를 입력해주세요", "error");
+    if (stock === "" || stock === undefined) return showToast("재고 수량을 입력해주세요", "error");
+    try {
+      const saved = await db.insert("products", {
+        name: name,
+        brand: newProduct.brand || "",
+        location: newProduct.location || "",
+        category: newProduct.category || "",
+        price: parseInt(price),
+        stock: parseInt(stock) || 0,
+        unit: "개",
+        image_url: newProduct.image || null
+      });
+      if (saved && saved.id) {
+        setProducts(prev => [...prev, { ...saved, image: saved.image_url || newProduct.image }]);
+        setModal(null);
+        setNewProduct(null);
+        showToast("상품이 추가됐어요!");
+      } else {
+        console.error("saved:", saved);
+        showToast("저장 실패: " + JSON.stringify(saved), "error");
+      }
+    } catch (e) {
+      console.error(e);
+      // 이미지 제외하고 재시도
+      try {
+        const saved2 = await db.insert("products", {
+          name: name,
+          brand: newProduct.brand || "",
+          location: newProduct.location || "",
+          category: newProduct.category || "",
+          price: parseInt(price),
+          stock: parseInt(stock) || 0,
+          unit: "개",
+          image_url: null
+        });
+        if (saved2 && saved2.id) {
+          setProducts(prev => [...prev, { ...saved2, image: newProduct.image }]);
+          setModal(null);
+          setNewProduct(null);
+          showToast("상품 추가됐어요! (이미지는 앱 내에서만 표시)");
+        } else {
+          showToast("저장 실패. 다시 시도해주세요", "error");
+        }
+      } catch (e2) {
+        showToast("오류: " + e2.message, "error");
+      }
+    }
   };
   const handleEditSave = async () => {
     if (!editProduct.name || !editProduct.price) return showToast("필수 항목을 입력해주세요", "error");
@@ -325,63 +394,55 @@ export default function InventoryApp() {
       )}
 
       {/* Header */}
-      <div style={{ background: THEME.sky, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14 }}>
-        {/* 고양이 로고 */}
-        <img src={CAT_IMG} alt="Toppick" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: "3px solid #fff", flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ color: THEME.white, fontSize: 11, letterSpacing: 2, fontWeight: 700, opacity: 0.85, marginBottom: 2 }}>재고관리</div>
-          <div style={{ color: THEME.white, fontSize: 19, fontWeight: 700 }}>Toppick</div>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setModal("catMgr")} style={{ background: "rgba(255,255,255,0.25)", color: "#fff", border: "none", borderRadius: 8, padding: "9px 12px", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>🏷️ 카테고리</button>
-          <button onClick={() => { setNewProduct(makeEmptyProduct()); setModal("add"); }} style={{ background: THEME.white, color: THEME.sky, border: "none", borderRadius: 8, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>+ 추가</button>
-        </div>
+      <div style={{ background: "#6AC3EF", display: "flex", alignItems: "flex-end", justifyContent: "center", height: 90, overflow: "hidden" }}>
+        <img src={CAT_IMG} alt="Toppick" style={{ width: 100, height: 100, objectFit: "contain", objectPosition: "bottom" }} />
       </div>
 
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, padding: "14px 16px" }}>
         {[
-          { label: "총 상품", value: products.length + "종", color: THEME.sky },
-          { label: "재고부족", value: lowStock.length + "종", color: "#F2A8C0" },
-          { label: "품절", value: outOfStock.length + "종", color: "#E85878" },
-          { label: "총 재고금액", value: "₩" + totalValue.toLocaleString(), color: "#3BAA72" },
+          { label: "총 상품", value: products.length + "종", color: THEME.sky, onClick: null },
+          { label: "재고부족", value: lowStock.length + "종", color: "#F2A8C0", onClick: () => setStockModal("부족") },
+          { label: "품절", value: outOfStock.length + "종", color: "#E85878", onClick: () => setStockModal("품절") },
+          { label: "총 재고금액", value: "₩" + totalValue.toLocaleString(), color: "#3BAA72", onClick: null },
         ].map(s => (
-          <div key={s.label} style={{ background: THEME.card, borderRadius: 12, padding: "12px 10px", boxShadow: "0 2px 8px rgba(91,184,232,0.1)" }}>
+          <div key={s.label} onClick={s.onClick} style={{ background: THEME.card, borderRadius: 12, padding: "12px 10px", boxShadow: "0 2px 8px rgba(91,184,232,0.1)", cursor: s.onClick ? "pointer" : "default" }}>
             <div style={{ fontSize: 10, color: THEME.sub, marginBottom: 4 }}>{s.label}</div>
             <div style={{ fontSize: s.label === "총 재고금액" ? 11 : 17, fontWeight: 700, color: s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Alerts */}
-      {(lowStock.length > 0 || outOfStock.length > 0) && (
-        <div style={{ margin: "0 16px 10px", background: "#FDE8F0", border: "1.5px solid #F2A8C0", borderRadius: 12, padding: "12px 14px" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#B05070", marginBottom: 6 }}>⚠️ 재고 알림</div>
-          {outOfStock.map(p => <div key={p.id} style={{ fontSize: 12, color: "#E85878", marginBottom: 2 }}>🔴 품절: {p.name}</div>)}
-          {lowStock.map(p => <div key={p.id} style={{ fontSize: 12, color: "#C0607A", marginBottom: 2 }}>🟡 부족: {p.name} ({p.stock}{p.unit} 남음)</div>)}
+      {/* Alerts - 품절만, 최대 2줄 스크롤 */}
+      {outOfStock.length > 0 && (
+        <div style={{ margin: "0 16px 10px", background: "#FDE8F0", border: "1.5px solid #F2A8C0", borderRadius: 12, padding: "10px 14px" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#B05070", marginBottom: 6 }}>⚠️ 품절 알림</div>
+          <div style={{ maxHeight: 44, overflowY: "auto", scrollbarWidth: "none" }}>
+            {outOfStock.map(p => <div key={p.id} style={{ fontSize: 12, color: "#E85878", marginBottom: 2 }}>🔴 품절: {p.name}</div>)}
+          </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: "flex", padding: "0 16px", gap: 8, marginBottom: 12 }}>
+      {/* Tabs + 카테고리 추가 */}
+      <div style={{ display: "flex", padding: "0 16px", gap: 8, marginBottom: 12, alignItems: "center" }}>
         {["재고현황", "입고 내역", "출고 내역"].map(t => (
           <button key={t} onClick={() => setTab(t)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === t ? THEME.sky : "#D6EEF8", color: tab === t ? "#fff" : THEME.skyDark }}>{t}</button>
         ))}
+        <button onClick={() => setModal("catMgr")} style={{ marginLeft: "auto", flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: "#D6EEF8", color: THEME.skyDark, whiteSpace: "nowrap" }}>카테고리+</button>
       </div>
 
       {/* 재고현황 */}
       {tab === "재고현황" && (
         <>
           <div style={{ padding: "0 16px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍  상품명 또는 브랜드 검색" style={{ ...inputStyle }} />
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
+            {/* 카테고리 칩 + 카테고리관리 버튼 */}
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none", alignItems: "center" }}>
               {["전체", ...categories].map(c => (
                 <button key={c} onClick={() => setFilterCat(c)} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: filterCat === c ? THEME.sky : "#D6EEF8", color: filterCat === c ? "#fff" : THEME.skyDark, whiteSpace: "nowrap" }}>{c}</button>
               ))}
             </div>
-            <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)} style={{ ...inputStyle }}>
-              {BRANDS.map(b => <option key={b}>{b}</option>)}
-            </select>
+            {/* 상품 추가 버튼 */}
+            <button onClick={() => { setNewProduct(makeEmptyProduct()); setModal("add"); }} style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: THEME.sky, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>+ 상품 추가</button>
           </div>
           <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 10 }}>
             {filtered.length === 0 && <div style={{ textAlign: "center", color: THEME.sub, padding: 40, fontSize: 14 }}>검색 결과가 없어요</div>}
@@ -452,6 +513,39 @@ export default function InventoryApp() {
               })}
             </div>
             <button onClick={() => { setModal(null); setEditingCat(null); setCatInput(""); }} style={{ width: "100%", marginTop: 16, padding: 12, borderRadius: 10, border: "1.5px solid #BFD9EC", background: "#fff", fontSize: 14, cursor: "pointer", fontWeight: 600, color: THEME.skyDark }}>닫기</button>
+          </div>
+        </div>
+      )}
+
+      {/* 재고부족/품절 상세 모달 */}
+      {stockModal && (
+        <div style={modalWrap} onClick={() => setStockModal(null)}>
+          <div style={modalBox} onClick={e => e.stopPropagation()}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: THEME.text, marginBottom: 16 }}>
+              {stockModal === "품절" ? "🔴 품절 상품" : "🟡 재고부족 상품"}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(stockModal === "품절" ? outOfStock : lowStock).length === 0
+                ? <div style={{ textAlign: "center", color: "#aaa", padding: 20 }}>해당 상품 없음</div>
+                : (stockModal === "품절" ? outOfStock : lowStock).map(p => (
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "#f8f7f4", borderRadius: 10, padding: 12, cursor: "pointer" }}
+                    onClick={() => { setDetailProduct(p); setStockModal(null); }}>
+                    {p.image
+                      ? <img src={p.image} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                      : <div style={{ width: 44, height: 44, borderRadius: 8, background: "#EEF7FD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>📦</div>
+                    }
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: THEME.text }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: THEME.sub }}>{p.brand && p.brand + " · "}{p.category}{p.location ? ` · 📍${p.location}` : ""}</div>
+                    </div>
+                    <div style={{ background: stockModal === "품절" ? "#FDE8EE" : "#FDE8F0", color: stockModal === "품절" ? "#E85878" : "#F2A8C0", fontWeight: 700, fontSize: 15, borderRadius: 8, padding: "4px 10px", flexShrink: 0 }}>
+                      {p.stock}개
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+            <button onClick={() => setStockModal(null)} style={{ width: "100%", marginTop: 16, padding: 12, borderRadius: 10, border: "1.5px solid #BFD9EC", background: "#fff", fontSize: 14, cursor: "pointer", fontWeight: 600, color: THEME.skyDark }}>닫기</button>
           </div>
         </div>
       )}
