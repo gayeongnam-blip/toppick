@@ -59,14 +59,14 @@ function ImageUploadBox({ value, onChange, size = 64 }) {
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 300;
+        const MAX = 600;
         let w = img.width, h = img.height;
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
         else { w = Math.round(w * MAX / h); h = MAX; }
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        onChange(canvas.toDataURL("image/jpeg", 0.7));
+        onChange(canvas.toDataURL("image/jpeg", 0.88));
       };
       img.src = ev.target.result;
     };
