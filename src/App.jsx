@@ -50,7 +50,7 @@ const LOW_STOCK_THRESHOLD = 2;
 const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid #BFD9EC", fontSize: 13, boxSizing: "border-box", outline: "none", background: "#F5FAFD" };
 const labelStyle = { fontSize: 11, color: THEME.sub, marginBottom: 4 };
 
-function ImageUploadBox({ value, onChange, size = 64 }) {
+function ImageUploadBox({ value, onChange, size = 64, maxSize = 800 }) {
   const ref = useRef();
   const handleFile = (e) => {
     const file = e.target.files[0];
@@ -59,14 +59,15 @@ function ImageUploadBox({ value, onChange, size = 64 }) {
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 600;
+        const MAX = maxSize;
+        const q = MAX >= 900 ? 0.93 : MAX >= 800 ? 0.92 : 0.88;
         let w = img.width, h = img.height;
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
         else { w = Math.round(w * MAX / h); h = MAX; }
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        onChange(canvas.toDataURL("image/jpeg", 0.88));
+        onChange(canvas.toDataURL("image/jpeg", q));
       };
       img.src = ev.target.result;
     };
@@ -80,7 +81,7 @@ function ImageUploadBox({ value, onChange, size = 64 }) {
   );
 }
 
-function ProductForm({ data, onChange, categories }) {
+function ProductForm({ data, onChange, categories, imgQuality, setImgQuality }) {
   const fields = [
     { key: "name", label: "상품명 *", type: "text", placeholder: "상품명 입력" },
     { key: "brand", label: "옵션", type: "text", placeholder: "옵션 (색상, 사이즈 등)" },
@@ -91,10 +92,23 @@ function ProductForm({ data, onChange, categories }) {
   return (
     <>
       <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
-        <ImageUploadBox value={data.image} onChange={(img) => onChange("image", img)} size={72} />
-        <div style={{ fontSize: 13, color: THEME.sub }}>
-          <div style={{ fontWeight: 600, color: THEME.gray, marginBottom: 2 }}>상품 이미지</div>
-          박스를 탭해서<br />사진을 추가하세요
+        <ImageUploadBox value={data.image} onChange={(img) => onChange("image", img)} size={72} maxSize={imgQuality} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 600, color: THEME.gray, fontSize: 13, marginBottom: 6 }}>상품 이미지</div>
+          <div style={{ fontSize: 11, color: THEME.sub, marginBottom: 8 }}>박스를 탭해서 사진 추가</div>
+          <div style={{ fontSize: 11, color: THEME.sub, marginBottom: 5, fontWeight: 600 }}>📐 이미지 해상도</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[
+              { val: 600, label: "600", sub: "68KB" },
+              { val: 800, label: "800", sub: "132KB" },
+              { val: 900, label: "900", sub: "177KB" },
+            ].map(opt => (
+              <button key={opt.val} onClick={() => setImgQuality(opt.val)} style={{ flex: 1, padding: "6px 4px", borderRadius: 8, border: "2px solid", borderColor: imgQuality === opt.val ? THEME.sky : "#BFD9EC", background: imgQuality === opt.val ? "#EEF7FD" : "#fff", cursor: "pointer", textAlign: "center" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: imgQuality === opt.val ? THEME.sky : THEME.sub }}>{opt.label}</div>
+                <div style={{ fontSize: 10, color: "#aaa" }}>~{opt.sub}</div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       {fields.map(f => (
@@ -139,6 +153,7 @@ export default function InventoryApp() {
   const [stockModal, setStockModal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [imgQuality, setImgQuality] = useState(800);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -545,7 +560,7 @@ export default function InventoryApp() {
         <div style={modalWrap}>
           <div style={modalBox}>
             <div style={{ fontWeight: 700, fontSize: 16, color: THEME.text, marginBottom: 16 }}>새 상품 추가</div>
-            <ProductForm data={newProduct} onChange={(k, v) => setNewProduct(prev => ({ ...prev, [k]: v }))} categories={categories} />
+            <ProductForm data={newProduct} onChange={(k, v) => setNewProduct(prev => ({ ...prev, [k]: v }))} categories={categories} imgQuality={imgQuality} setImgQuality={setImgQuality} />
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { setModal(null); setNewProduct(null); }} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1.5px solid #BFD9EC", background: "#fff", fontSize: 14, cursor: "pointer", color: THEME.skyDark }}>닫기</button>
               <button onClick={() => setBulkDeleteConfirm(true)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "none", background: "#FDE8EE", color: "#E85878", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>🗑️ 삭제</button>
@@ -560,7 +575,7 @@ export default function InventoryApp() {
         <div style={modalWrap}>
           <div style={modalBox}>
             <div style={{ fontWeight: 700, fontSize: 16, color: THEME.text, marginBottom: 16 }}>상품 수정</div>
-            <ProductForm data={editProduct} onChange={(k, v) => setEditProduct(prev => ({ ...prev, [k]: v }))} categories={categories} />
+            <ProductForm data={editProduct} onChange={(k, v) => setEditProduct(prev => ({ ...prev, [k]: v }))} categories={categories} imgQuality={imgQuality} setImgQuality={setImgQuality} />
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { setModal(null); setEditProduct(null); }} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1.5px solid #BFD9EC", background: "#fff", fontSize: 14, cursor: "pointer", color: THEME.skyDark }}>취소</button>
               <button onClick={handleEditSave} style={{ flex: 2, padding: 12, borderRadius: 10, border: "none", background: THEME.sky, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>저장하기</button>
