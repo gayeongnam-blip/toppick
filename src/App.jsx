@@ -372,6 +372,7 @@ export default function InventoryApp() {
             {/* 카테고리 + 버튼 → 카테고리 칩 */}
             <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none", alignItems: "center" }}>
               <button onClick={() => setModal("catMgr")} style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 20, border: "none", cursor: "pointer", fontSize: 20, fontWeight: 700, background: THEME.sky, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>+</button>
+              <button onClick={() => setFilterCat("전체")} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: filterCat === "전체" ? THEME.sky : "#D6EEF8", color: filterCat === "전체" ? "#fff" : THEME.skyDark, whiteSpace: "nowrap" }}>전체</button>
               {categories.map(c => (
                 <button key={c} onClick={() => setFilterCat(filterCat === c ? "전체" : c)} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: filterCat === c ? THEME.sky : "#D6EEF8", color: filterCat === c ? "#fff" : THEME.skyDark, whiteSpace: "nowrap" }}>{c}</button>
               ))}
@@ -513,7 +514,6 @@ export default function InventoryApp() {
               <button onClick={() => setDetailProduct(null)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1.5px solid #BFD9EC", background: "#fff", fontSize: 13, cursor: "pointer", color: THEME.skyDark }}>닫기</button>
               <button onClick={() => setDeleteConfirm(detailProduct)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "none", background: "#FDE8EE", color: "#E85878", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>🗑️ 삭제</button>
               <button onClick={() => openEdit(detailProduct)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "none", background: "#D6EEF8", color: THEME.skyDark, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✏️ 수정</button>
-              <button onClick={() => { setSelectedProduct(detailProduct); setDetailProduct(null); setModal("log"); }} style={{ flex: 2, padding: 12, borderRadius: 10, border: "none", background: THEME.sky, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>입출고</button>
             </div>
           </div>
         </div>
@@ -563,7 +563,6 @@ export default function InventoryApp() {
             <ProductForm data={newProduct} onChange={(k, v) => setNewProduct(prev => ({ ...prev, [k]: v }))} categories={categories} imgQuality={imgQuality} setImgQuality={setImgQuality} />
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { setModal(null); setNewProduct(null); }} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1.5px solid #BFD9EC", background: "#fff", fontSize: 14, cursor: "pointer", color: THEME.skyDark }}>닫기</button>
-              <button onClick={() => setBulkDeleteConfirm(true)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "none", background: "#FDE8EE", color: "#E85878", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>🗑️ 삭제</button>
               <button onClick={handleAddProduct} style={{ flex: 2, padding: 12, borderRadius: 10, border: "none", background: THEME.sky, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>추가하기</button>
             </div>
           </div>
